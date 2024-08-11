@@ -1,0 +1,144 @@
+# Data needs to be loaded first, from iMotions output. GSR would be the Galvanic Skin Response output (could be replaced with other psychometrics as needed) at the desired stage.
+
+
+# Initialize DataFrames
+B_GSR_ABB = pd.DataFrame()
+B_GSR_SA = pd.DataFrame()
+
+# Iterate through files in the directory
+for file_name in os.listdir(directory):
+    if file_name.endswith("_results.csv"):
+        file_path = os.path.join(directory, file_name)
+        
+        # Load the CSV file into a DataFrame
+        df = pd.read_csv(file_path)
+        
+        # Filter rows where the first column is "SendBack2"
+        sendback2_rows = df[df.iloc[:, 0] == "SendBack2"]
+        
+        # Extract the "Average GSR" values from the first 3 cases
+        GSR_values = sendback2_rows.iloc[:3, df.columns.get_loc("Average GSR")]
+        GSR_values_SA = sendback2_rows.iloc[5:8, df.columns.get_loc("Average GSR")]
+        
+        # Get the user ID from the file name
+        user_id = file_name.replace("_results.csv", "")
+        
+        # Add the user ID to the first cell of the new row
+        B_GSR_ABB.at[user_id, "File Name"] = user_id
+        B_GSR_SA.at[user_id, "File Name"] = user_id
+        
+        # Add the extracted values to the respective rows
+        for i, value in enumerate(GSR_values):
+            B_GSR_ABB.at[user_id, f"GSR_{i+1}"] = value
+        
+        for i, value in enumerate(GSR_values_SA):
+            B_GSR_SA.at[user_id, f"GSR_{i+1}"] = value
+
+# Display the DataFrames
+print("B_GSR_ABB:\n", B_GSR_ABB)
+print("\nB_GSR_SA:\n", B_GSR_SA)
+
+# Save B_GSR_ABB DataFrame as CSV
+B_GSR_ABB.to_csv(os.path.join(directory, "B_GSR_ABB.csv"), index=False)
+
+# Save B_GSR_SA DataFrame as CSV
+B_GSR_SA.to_csv(os.path.join(directory, "B_GSR_SA.csv"), index=False)
+
+
+# To Summarize and Save:
+
+# Iterate through files in the directory
+for file_name in os.listdir(directory):
+    if file_name.endswith("_results.csv"):
+        file_path = os.path.join(directory, file_name)
+        
+        # Load the CSV file into a DataFrame
+        df = pd.read_csv(file_path)
+        
+        # Print the list of column names for debugging
+        print("Column Names:", df.columns)
+        
+        # Filter rows where the first column is "SendBack2"
+        sendback2_rows = df[df.iloc[:, 0] == "SendBack2"]
+        
+        # Extract the "Avg Anger" values from the first 3 cases
+        avg_anger_col = [col for col in df.columns if "Avg Anger" in col]
+        if len(avg_anger_col) > 0:
+            avg_anger_col = avg_anger_col[0]
+            Anger_values = sendback2_rows.iloc[:3, sendback2_rows.columns.get_loc(avg_anger_col)]
+            
+            avg_anger_col_sa = [col for col in df.columns if "Avg Anger" in col]
+            if len(avg_anger_col_sa) > 0:
+                avg_anger_col_sa = avg_anger_col_sa[0]
+                Anger_values_SA = sendback2_rows.iloc[5:8, sendback2_rows.columns.get_loc(avg_anger_col_sa)]
+        
+                # Get the user ID from the file name
+                user_id = file_name.replace("_results.csv", "")
+        
+                # Add the user ID to the first cell of the new row
+                A_Anger_ABB.at[user_id, "File Name"] = user_id
+                A_Anger_SA.at[user_id, "File Name"] = user_id
+        
+                # Add the extracted values to the respective rows
+                for i, value in enumerate(Anger_values):
+                    A_Anger_ABB.at[user_id, f"Anger_{i+1}"] = value
+        
+                for i, value in enumerate(Anger_values_SA):
+                    A_Anger_SA.at[user_id, f"Anger_{i+1}"] = value
+
+# Display the DataFrames
+print("A_Anger_ABB:\n", A_Anger_ABB)
+print("\nA_Anger_SA:\n", A_Anger_SA)
+
+# Save A_Anger_ABB DataFrame as CSV
+A_Anger_ABB.to_csv(os.path.join(directory, "A_Anger_ABB.csv"), index=False)
+
+# Save A_Anger_SA DataFrame as CSV
+A_Anger_SA.to_csv(os.path.join(directory, "A_Anger_SA.csv"), index=False)
+
+
+# To Visualize in Groups:
+
+
+# Load the files and calculate averages and standard errors
+file_names = [
+    "A_GSR_ABB.csv", "B_GSR_ABB.csv", "C_GSR_ABB.csv",
+    "A_GSR_SA.csv", "B_GSR_SA.csv", "C_GSR_SA.csv"
+]
+
+data_dir = r'C:\Users\Kam Kamyar\OneDrive\Documents\Anger_FinalData\otree_data\otree_data\Data\clean biometrics'
+
+for file_name in file_names:
+    df = pd.read_csv(f"{data_dir}/{file_name}")
+    values = df.iloc[:, 1:4].values
+    values = values[~np.isnan(values).any(axis=1)]  # Drop rows with NaN values
+    avg = np.mean(values)
+    se = np.std(values, ddof=1) / np.sqrt(len(values))
+    base_name = file_name.split('.')[0]
+    globals()[f"{base_name}_avg"] = avg
+    globals()[f"{base_name}_se"] = se
+
+# Create the bar graph for GSR totals
+groups = ['A', 'B', 'C']
+biometric = 'GSR'
+
+x_labels = groups
+y_vals = [A_GSR_ABB_avg, B_GSR_ABB_avg, C_GSR_ABB_avg]
+y_err = [A_GSR_ABB_se, B_GSR_ABB_se, C_GSR_ABB_se]
+
+plt.figure(figsize=(10, 6))
+plt.bar(x_labels, y_vals, yerr=y_err, color='gold', edgecolor='black')
+plt.xlabel('Groups')
+plt.ylabel('GSR Totals')
+plt.title('GSR Total Values across Groups - #MW Test results will be added.#')
+plt.xticks(x_labels, ['Group A', 'Group B', 'Group C'])
+
+
+plt.show()
+
+# Mann-Whitney test is used in such cases where we are comparing the median of two independent samples with non-normal distributions.
+# To compute and add, we use the following commands:
+
+stat, p_value = mannwhitneyu(group1, group2)
+
+# By printing 'stat', the result could be shown anywhere (i.e., on the plot accordingly). 
